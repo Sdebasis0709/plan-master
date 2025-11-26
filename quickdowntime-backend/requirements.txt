@@ -4,8 +4,20 @@ sqlalchemy
 psycopg2-binary
 python-dotenv
 pydantic
-google-generativeai
+
+# Auth
+python-jose
+passlib[bcrypt]
+
+# File Upload
 python-multipart
 aiofiles
+
+# Realtime
 websockets
+
+# AI
+google-generativeai
+
+# Utils
 requests
