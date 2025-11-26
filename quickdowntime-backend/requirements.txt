@@ -21,3 +21,7 @@ google-generativeai
 
 # Utils
 requests
+pydantic-settings
+supabase
+email-validator
+pydantic[email]
