@@ -1,40 +1,5 @@
 import { useEffect, useState } from "react";
-
-// Mock client for demonstration
-const client = {
-  get: async (url: string) => {
-    // Simulating your API response
-    return {
-      data: {
-        active: [
-          {
-            id: 52,
-            machine_id: "Blast Furnace",
-            reason: "Electrical Failure",
-            category: "Sensor Malfunction",
-            description: "sensor is not working",
-            severity: "high",
-            status: "open",
-            created_at: "2025-11-26T13:08:26.019911"
-          },
-          {
-            id: 51,
-            machine_id: "Cold Rolling Mill",
-            reason: "",
-            category: "",
-            description: "jam at machine",
-            severity: "high",
-            status: "open",
-            created_at: "2025-11-26T12:36:37.066798"
-          }
-        ]
-      }
-    };
-  },
-  post: async (url: string, data: any) => {
-    return { data: { success: true } };
-  }
-};
+import client from "../../api/axiosClient"; 
 
 export default function OperatorActive() {
   const [activeList, setActiveList] = useState<any[]>([]);

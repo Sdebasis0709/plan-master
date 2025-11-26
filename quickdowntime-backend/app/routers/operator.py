@@ -227,14 +227,6 @@ def get_active_downtime(user=Depends(get_current_user)):
 
 
 
-
-
-
-
-
-
-
-
 @router.get("/resolved")
 def get_resolved_downtime(user=Depends(get_current_user)):
     require_operator(user)
@@ -254,16 +246,6 @@ def get_resolved_downtime(user=Depends(get_current_user)):
     except Exception as e:
         print("Fetch resolved downtime error:", e)
         raise HTTPException(500, "Failed to load resolved downtime")
-
-
-
-
-
-
-
-
-
-
 
 
 

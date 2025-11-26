@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../store/authStore";
 import { useAlertStore } from "../../store/alertStore";
-
+import client from "../../api/axiosClient";
 
 // Icons
 import {
@@ -19,27 +19,44 @@ interface Props {
 }
 
 export default function ManagerLayout({ children }: Props) {
-  // 🔥 Establish WebSocket once for ALL manager pages
-
-
   const { logout } = useAuth();
   const location = useLocation();
   const [open, setOpen] = useState(false);
 
   // Real-time alert count from Zustand
   const alertCount = useAlertStore((s) => s.count);
+  const setCount = useAlertStore((s) => s.setCount);
+
+  // 🔥 Fetch alert count from API
+  const fetchAlertCount = async () => {
+    try {
+      const response = await client.get("/dashboard/alerts/unseen-count");
+      setCount(response.data.count || 0);
+    } catch (error) {
+      console.error("Error fetching alert count:", error);
+    }
+  };
+
+  // 🔥 Fetch count on mount and when route changes
+  useEffect(() => {
+    fetchAlertCount();
+  }, [location.pathname]);
+
+  // 🔥 Optional: Poll for new alerts every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchAlertCount();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   const navItems = [
+    { label: "Alerts", path: "/manager/alerts", icon: Bell, badge: alertCount },
     { label: "Dashboard", path: "/manager", icon: LayoutDashboard },
     { label: "Downtimes", path: "/manager/downtimes", icon: ListOrdered },
     { label: "Statistics", path: "/manager/stats", icon: BarChart },
     { label: "AI Insights", path: "/manager/ai", icon: BotIcon },
-    {
-      label: "Alerts",
-      path: "/manager/alerts",
-      icon: Bell,
-      badge: alertCount, // 🔥 real-time badge
-    },
   ];
 
   return (

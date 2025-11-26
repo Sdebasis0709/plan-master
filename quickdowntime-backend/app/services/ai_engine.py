@@ -22,6 +22,7 @@ class AIEngine:
         return f"""
 You are an expert manufacturing engineer. 
 Analyze the downtime and RETURN STRICT JSON ONLY.
+** confidence score shoud be in 1-100 %.
 
 Current Event:
 {json.dumps(event, indent=2, default=str)}
@@ -40,7 +41,7 @@ Return EXACT JSON format:
   "preventive_measures": [""],
   "severity": "low|medium|high|critical",
   "predicted_next_failure": "",
-  "confidence_score": 0.0
+  "confidence_score": 0%
 }}
 
 NO MARKDOWN  
@@ -93,7 +94,7 @@ ONLY JSON.
                 "preventive_measures": [],
                 "severity": "unknown",
                 "predicted_next_failure": "unknown",
-                "confidence_score": 0.0,
+                "confidence_score": 0,
                 "error": str(e)
             }
 
