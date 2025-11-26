@@ -106,8 +106,8 @@ async def operator_log(
 
     downtime_data = {
         "machine_id": machine_id,
-        "reason": reason or "",
-        "category": category or "",
+        "reason": reason if reason not in (None, "", "null", "undefined") else "Unknown reason",
+        "category": category if category not in (None, "", "null", "undefined") else "Uncategorized",
         "description": description or "",
         "operator_id": user["id"],
         "operator_email": user["email"],
@@ -200,3 +200,100 @@ async def operator_log(
         print("WS broadcast error:", e)
 
     return JSONResponse({"message": "Downtime logged", "data": downtime})
+
+
+
+
+
+@router.get("/active")
+def get_active_downtime(user=Depends(get_current_user)):
+    require_operator(user)
+
+    try:
+        res = (
+            supabase.table("downtime_logs")
+            .select("*")
+            .eq("operator_id", user["id"])
+            .eq("status", "open")
+            .order("created_at", desc=True)
+            .execute()
+        )
+
+        return {"active": res.data or []}
+
+    except Exception as e:
+        print("Fetch active downtime error:", e)
+        raise HTTPException(500, "Failed to load active downtime")
+
+
+
+
+
+
+
+
+
+
+
+@router.get("/resolved")
+def get_resolved_downtime(user=Depends(get_current_user)):
+    require_operator(user)
+
+    try:
+        res = (
+            supabase.table("downtime_logs")
+            .select("*")
+            .eq("operator_id", user["id"])
+            .eq("status", "resolved")   # 👈 correct lowercase
+            .order("created_at", desc=True)
+            .execute()
+        )
+
+        return {"resolved": res.data or []}
+
+    except Exception as e:
+        print("Fetch resolved downtime error:", e)
+        raise HTTPException(500, "Failed to load resolved downtime")
+
+
+
+
+
+
+
+
+
+
+
+
+
+from datetime import datetime
+
+@router.post("/resolve")
+def resolve_downtime(
+    id: int = Form(...),
+    notes: Optional[str] = Form(""),
+    user=Depends(get_current_user)
+):
+    require_operator(user)
+
+    try:
+        res = supabase.table("downtime_logs").update({
+            "status": "resolved",
+            "resolved_by": user["id"],
+            "resolved_at": datetime.utcnow().isoformat(),   # FIXED
+            "resolution_notes": notes,
+            "updated_at": datetime.utcnow().isoformat(),    # optional
+        }).eq("id", id).execute()
+
+        if not res.data:
+            raise HTTPException(400, "No record updated. Wrong ID?")
+
+        return {
+            "message": "Downtime resolved",
+            "downtime": res.data[0]
+        }
+
+    except Exception as e:
+        print("Resolve error:", e)
+        raise HTTPException(500, f"Failed to resolve downtime: {str(e)}")

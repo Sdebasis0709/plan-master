@@ -72,8 +72,11 @@ export default function OperatorStart() {
   async function submitOnline(payload: any) {
     const form = new FormData();
     form.append("machine_id", payload.machine_id);
-    form.append("root_cause", payload.root_cause);
-    form.append("sub_category", payload.sub_category);
+
+    // FIX: use backend field names
+    form.append("reason", payload.root_cause);
+    form.append("category", payload.sub_category);
+
     form.append("description", payload.description);
 
     if (payload.image_file) form.append("image", payload.image_file);
@@ -90,18 +93,17 @@ export default function OperatorStart() {
 
     if (online) {
       try {
-        // If blobs exist → multipart
         if (payload.image_file || payload.audio_file) {
           await submitOnline(payload);
           alert("Submitted online");
           return;
         }
 
-        // Else JSON submit
+        // FIX: JSON submit also uses correct fields
         await client.post("/api/operator/log", {
           machine_id: payload.machine_id,
-          root_cause: payload.root_cause,
-          sub_category: payload.sub_category,
+          reason: payload.root_cause,
+          category: payload.sub_category,
           description: payload.description,
           image_base64: payload.image_base64 || null,
           audio_base64: payload.audio_base64 || null,
@@ -120,8 +122,11 @@ export default function OperatorStart() {
       id,
       created_at: new Date().toISOString(),
       machine_id: payload.machine_id,
-      root_cause: payload.root_cause,
-      sub_category: payload.sub_category,
+
+      // FIX: match backend fields
+      reason: payload.root_cause,
+      category: payload.sub_category,
+
       description: payload.description,
       image_base64: payload.image_base64 || null,
       audio_base64: payload.audio_base64 || null,
@@ -139,18 +144,13 @@ export default function OperatorStart() {
     alert("Saved offline — will sync automatically when online.");
   }
 
-  // ---- AUDIO SAVE ----
   function onAudioSave(blob: Blob) {
     setAudioBlob(blob);
   }
 
-  // ---- SUBMIT FORM ----
   async function onSubmit(e: any) {
     e.preventDefault();
-
-    // Prevent multiple submissions
     if (isSubmitting) return;
-    
     setIsSubmitting(true);
 
     try {
@@ -161,19 +161,16 @@ export default function OperatorStart() {
         description,
       };
 
-      if (imageDataBase64) {
-        payload.image_base64 = imageDataBase64;
-      }
+      if (imageDataBase64) payload.image_base64 = imageDataBase64;
 
       if (audioBlob) {
         const base64 = await blobToBase64(audioBlob);
         payload.audio_base64 = base64;
-        payload.audio_file = audioBlob; 
+        payload.audio_file = audioBlob;
       }
 
       await submit(payload);
 
-      // Reset form only after successful submission
       setDescription("");
       setImagePreview(null);
       setImageDataBase64(null);
@@ -190,9 +187,7 @@ export default function OperatorStart() {
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
-    if (f) {
-      handleImageFile(f);
-    }
+    if (f) handleImageFile(f);
   }
 
   function blobToBase64(blob: Blob) {
@@ -203,6 +198,7 @@ export default function OperatorStart() {
       reader.readAsDataURL(blob);
     });
   }
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0a1322] to-[#0f1a2e]">
