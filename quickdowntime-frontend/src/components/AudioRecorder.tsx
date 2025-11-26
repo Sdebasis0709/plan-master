@@ -37,9 +37,9 @@ export default function AudioRecorder({ onSave }: { onSave: (blob: Blob) => void
   return (
     <div>
       {recording ? (
-        <button onClick={stop} className="px-3 py-1 bg-red-600 rounded">Stop</button>
+        <button onClick={stop} type="button" className="px-3 py-1 bg-red-600 rounded">Stop</button>
       ) : (
-        <button onClick={start} className="px-3 py-1 bg-green-600 rounded">Record</button>
+        <button onClick={start} type="button" className="px-3 py-1 bg-green-600 rounded">Record</button>
       )}
     </div>
   );

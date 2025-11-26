@@ -16,7 +16,7 @@ export const saveOfflineLog = async (record: any) => {
 
 export const getPendingLogs = async () => {
   const db = await getDB();
-  return await db.getAllFromIndex("offline_logs", "id");
+  return await db.getAll("offline_logs");   // <-- FIXED
 };
 
 export const deleteLog = async (id: string) => {
