@@ -82,10 +82,15 @@ export default function MachineDetail() {
           <h2 className="text-xl font-semibold">24-Hour Activity</h2>
         </div>
 
-        <div className="h-64 flex items-end gap-1">
-          {heartbeat.map((hour, i) => {
-            const maxCount = Math.max(...heartbeat.map((h) => h.downtime_count), 1);
-            const heightPercent = (hour.downtime_count / maxCount) * 100;
+        {heartbeat.length === 0 ? (
+          <div className="h-64 flex items-center justify-center text-gray-400">
+            No activity data available
+          </div>
+        ) : (
+          <div className="h-64 flex items-end gap-1">
+            {heartbeat.map((hour, i) => {
+              const maxCount = Math.max(...heartbeat.map((h) => h.downtime_count), 1);
+              const heightPercent = (hour.downtime_count / maxCount) * 100;
 
             return (
               <div key={i} className="flex-1 flex flex-col items-center gap-2">
@@ -110,6 +115,7 @@ export default function MachineDetail() {
             );
           })}
         </div>
+        )}
 
         <div className="flex justify-center gap-6 mt-4 text-sm">
           <div className="flex items-center gap-2">
@@ -127,7 +133,7 @@ export default function MachineDetail() {
       <div className="bg-[#0f1724] border border-gray-700 rounded-xl p-6">
         <h2 className="text-xl font-semibold mb-4">Downtime History (Last 30 Days)</h2>
 
-        {history.downtimes.length === 0 ? (
+        {!history.downtimes || history.downtimes.length === 0 ? (
           <div className="text-center py-12 text-gray-400">
             <Activity className="mx-auto mb-3 opacity-50" size={48} />
             <p>No downtimes recorded in the last 30 days</p>
@@ -135,7 +141,7 @@ export default function MachineDetail() {
         ) : (
           <div className="space-y-3">
             {history.downtimes.map((downtime: any, i: number) => (
-              <DowntimeCard key={i} downtime={downtime} />
+              <DowntimeCard key={downtime.id || i} downtime={downtime} />
             ))}
           </div>
         )}
@@ -164,7 +170,9 @@ function DowntimeCard({ downtime }: { downtime: any }) {
     low: { bg: "bg-green-600/20", text: "text-green-400", border: "border-green-700" },
   };
 
-  const severity = downtime.severity || "low";
+  // Normalize severity value and default to 'low' if not found
+  const rawSeverity = downtime.severity?.toLowerCase() || "low";
+  const severity = ["high", "medium", "low"].includes(rawSeverity) ? rawSeverity : "low";
   const config = severityConfig[severity];
 
   return (
