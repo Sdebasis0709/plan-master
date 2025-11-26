@@ -1,56 +1,33 @@
-import { useEffect, useRef, useState } from "react";
+// src/pages/manager/Alerts.tsx
+import { useEffect, useState } from "react";
 import ManagerLayout from "../../components/layout/ManagerLayout";
 import client from "../../api/axiosClient";
 import { useAlertStore } from "../../store/alertStore";
 
 export default function ManagerAlerts() {
-  const [alerts, setAlerts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const wsRef = useRef<WebSocket | null>(null);
-
+  const alerts = useAlertStore((s) => s.alerts);
+  const setAlertsStore = useAlertStore((s) => s.setAlerts);
   const setAlertCount = useAlertStore((s) => s.setCount);
-  const increment = useAlertStore((s) => s.increment);
+
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadAlerts();
-    setupWS();
 
-    // when entering alerts page → clear badge
+    // clear badge on entering alerts page
     setAlertCount(0);
   }, []);
 
   const loadAlerts = async () => {
     try {
       const r = await client.get("/dashboard/alerts");
-      setAlerts(r.data);
+      setAlertsStore(r.data); // ✅ store in Zustand, not React local state
     } catch (e) {
       console.log("Alerts load error:", e);
     }
     setLoading(false);
   };
 
-  const setupWS = () => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-
-    const ws = new WebSocket(
-      `${import.meta.env.VITE_WS_URL}/api/ws/manager?token=${token}`
-    );
-    wsRef.current = ws;
-
-    ws.onmessage = (e) => {
-      try {
-        const msg = JSON.parse(e.data);
-
-        if (msg.type === "new_downtime_with_ai") {
-          setAlerts((prev) => [msg.downtime, ...prev]);
-          increment(); // show unread until page reload or mark all as seen
-        }
-      } catch {}
-    };
-  };
-
-  // 🔥 Mark All as Seen
   const markAllSeen = () => {
     setAlertCount(0);
   };
@@ -101,8 +78,7 @@ export default function ManagerAlerts() {
                         : a.severity === "medium"
                         ? "bg-amber-600/30 text-amber-300 border border-amber-700"
                         : "bg-green-600/30 text-green-300 border border-green-700"
-                    }
-                `}
+                    }`}
                 >
                   {a.severity}
                 </span>

@@ -1,3 +1,5 @@
+//app/src/pages/manager/Dashboard.tsx
+
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import client from "../../api/axiosClient";

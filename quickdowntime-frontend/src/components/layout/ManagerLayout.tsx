@@ -1,8 +1,8 @@
-import { ReactNode, useState } from "react";
+import type { ReactNode } from "react";
+import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../store/authStore";
 import { useAlertStore } from "../../store/alertStore";
-import { useManagerWS } from "../../services/wsManager";
 
 
 // Icons
@@ -19,12 +19,14 @@ interface Props {
 }
 
 export default function ManagerLayout({ children }: Props) {
-  useManagerWS();
+  // 🔥 Establish WebSocket once for ALL manager pages
+
+
   const { logout } = useAuth();
   const location = useLocation();
   const [open, setOpen] = useState(false);
 
-  // global real-time alert count
+  // Real-time alert count from Zustand
   const alertCount = useAlertStore((s) => s.count);
 
   const navItems = [
@@ -32,21 +34,20 @@ export default function ManagerLayout({ children }: Props) {
     { label: "Downtimes", path: "/manager/downtimes", icon: ListOrdered },
     { label: "Statistics", path: "/manager/stats", icon: BarChart },
     { label: "AI Insights", path: "/manager/ai", icon: BotIcon },
-
     {
       label: "Alerts",
       path: "/manager/alerts",
       icon: Bell,
-      badge: alertCount, // 🔥 real-time alerts
+      badge: alertCount, // 🔥 real-time badge
     },
   ];
 
   return (
     <div className="flex min-h-screen bg-[#0f1724] text-white">
-
-      {/* ----------------------------- */}
-      {/* Desktop Sidebar */}
-      {/* ----------------------------- */}
+      
+      {/* ================================
+             DESKTOP SIDEBAR
+         ================================ */}
       <div className="hidden md:block w-64 bg-[#07121a] p-5 border-r border-gray-800">
         <h1 className="text-2xl font-bold mb-8 text-primary">Manager</h1>
 
@@ -64,36 +65,31 @@ export default function ManagerLayout({ children }: Props) {
                     active
                       ? "bg-primary text-black font-semibold"
                       : "hover:bg-[#0d1c29]"
-                  }
-                `}
+                  }`}
               >
                 <div className="flex items-center space-x-3">
                   <Icon
                     size={18}
                     className={
-                      active
-                        ? "text-black"
-                        : "text-gray-300 group-hover:text-white"
+                      active ? "text-black" : "text-gray-300 group-hover:text-white"
                     }
                   />
                   <span>{item.label}</span>
                 </div>
 
-                {/* 🔥 Badge */}
+                {/* 🔥 Alert Badge */}
                 {item.badge !== undefined && item.badge > 0 && (
                   <span className="text-xs px-2 py-1 bg-red-600 rounded-full animate-pulse">
                     {item.badge}
                   </span>
                 )}
 
-                {/* Active left bar */}
                 {active && (
                   <div className="absolute left-0 top-0 h-full w-1 bg-blue-400 rounded-r"></div>
                 )}
               </Link>
             );
           })}
-          
         </nav>
 
         <button
@@ -104,9 +100,9 @@ export default function ManagerLayout({ children }: Props) {
         </button>
       </div>
 
-      {/* ----------------------------- */}
-      {/* Mobile Drawer */}
-      {/* ----------------------------- */}
+      {/* ================================
+             MOBILE SIDEBAR
+         ================================ */}
       {open && (
         <div
           className="fixed inset-0 bg-black/50 z-40"
@@ -133,8 +129,7 @@ export default function ManagerLayout({ children }: Props) {
                         active
                           ? "bg-primary text-black font-semibold"
                           : "hover:bg-[#0d1c29]"
-                      }
-                    `}
+                      }`}
                   >
                     <div className="flex items-center space-x-3">
                       <Icon
@@ -156,8 +151,6 @@ export default function ManagerLayout({ children }: Props) {
                   </Link>
                 );
               })}
-              
-
             </nav>
 
             <button
@@ -170,9 +163,9 @@ export default function ManagerLayout({ children }: Props) {
         </div>
       )}
 
-      {/* ----------------------------- */}
-      {/* Main Content */}
-      {/* ----------------------------- */}
+      {/* ================================
+             MAIN CONTENT
+         ================================ */}
       <div className="flex-1 flex flex-col">
         <div className="bg-[#07121a] p-4 flex items-center justify-between md:justify-end shadow">
           <button

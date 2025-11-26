@@ -1,28 +1,29 @@
 # app/routers/operator.py
-
 import os
 import uuid
 import base64
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, UploadFile, Form, HTTPException, Request
+from fastapi import (
+    APIRouter, Depends, File, UploadFile, Form,
+    HTTPException, Request
+)
 from fastapi.responses import JSONResponse
 
 from app.config import settings, supabase
 from app.auth.security import get_current_user, require_operator
 
-# NEW: AI engine + WebSockets
 from app.services.ai_engine import ai_engine
 from app.services.websocket_manager import ws_manager
+
 
 router = APIRouter(prefix="/api/operator", tags=["Operator"])
 
 
-# ---------------------------------------------------------
+# --------------------------------------------------------------
 # Helpers
-# ---------------------------------------------------------
-
+# --------------------------------------------------------------
 def _ensure_upload_dir():
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 
@@ -67,15 +68,13 @@ def _save_base64_data(b64: str, default_ext: str, prefix: str) -> str:
     return abs_path
 
 
-# ---------------------------------------------------------
+# --------------------------------------------------------------
 # MAIN OPERATOR ENDPOINT
-# ---------------------------------------------------------
-
+# --------------------------------------------------------------
 @router.post("/log")
 async def operator_log(
     request: Request,
 
-    # Multipart fields
     machine_id: Optional[str] = Form(None),
     reason: Optional[str] = Form(None),
     category: Optional[str] = Form(None),
@@ -84,45 +83,43 @@ async def operator_log(
     image: Optional[UploadFile] = File(None),
     audio: Optional[UploadFile] = File(None),
 
-    # base64 when offline
     image_base64: Optional[str] = Form(None),
     audio_base64: Optional[str] = Form(None),
 
-    user=Depends(get_current_user),
+    user=Depends(get_current_user)
 ):
     require_operator(user)
 
-    # JSON payload fallback if no form fields
+    # Fallback for JSON input
     ct = request.headers.get("content-type", "")
     if not machine_id and ct.startswith("application/json"):
-        body = await request.json()
-        machine_id = body.get("machine_id")
-        reason = body.get("reason")
-        category = body.get("category")
-        description = body.get("description")
-        image_base64 = body.get("image_base64")
-        audio_base64 = body.get("audio_base64")
+        data = await request.json()
+        machine_id = data.get("machine_id")
+        reason = data.get("reason")
+        category = data.get("category")
+        description = data.get("description")
+        image_base64 = data.get("image_base64")
+        audio_base64 = data.get("audio_base64")
 
     if not machine_id:
         raise HTTPException(400, "machine_id is required")
 
-    # Build base DB record
     downtime_data = {
         "machine_id": machine_id,
         "reason": reason or "",
         "category": category or "",
         "description": description or "",
-        "operator_id": user.get("id"),
-        "operator_email": user.get("email"),
+        "operator_id": user["id"],
+        "operator_email": user["email"],
         "status": "open",
     }
 
     saved_image_path = None
     saved_audio_path = None
 
-    # ---------------------------------------------------------
-    # Save image/audio
-    # ---------------------------------------------------------
+    # --------------------------------------------------------------
+    # Save local files or base64
+    # --------------------------------------------------------------
     try:
         if image and image.filename:
             saved_image_path = _save_upload_file(image, "img_")
@@ -140,29 +137,29 @@ async def operator_log(
             saved_audio_path = _save_base64_data(audio_base64, ".webm", "aud_")
             downtime_data["audio_path"] = saved_audio_path
 
-        # ---------------------------------------------------------
-        # Insert into DB
-        # ---------------------------------------------------------
         insert_res = supabase.table("downtime_logs").insert(downtime_data).execute()
         if not insert_res.data:
-            raise Exception(insert_res.error)
+            raise Exception("Insert failed")
 
         downtime = insert_res.data[0]
 
     except Exception as e:
-        raise HTTPException(500, f"Insert failed: {str(e)}")
+        raise HTTPException(500, f"Insert failed: {e}")
 
-    # ---------------------------------------------------------
-    #  AI ANALYSIS (new)
-    # ---------------------------------------------------------
+    # --------------------------------------------------------------
+    # AI Analysis (your previous logic)
+    # --------------------------------------------------------------
     try:
-        # Get last 20 as history
-        history_res = supabase.table("downtime_logs").select("*").order("created_at", desc=True).limit(20).execute()
-        history = history_res.data or []
+        history = (
+            supabase.table("downtime_logs")
+            .select("*")
+            .order("created_at", desc=True)
+            .limit(20)
+            .execute()
+        ).data or []
 
         ai_result = await ai_engine.analyze_downtime(downtime, history)
 
-        # Save into ai_analysis table
         supabase.table("ai_analysis").insert({
             "downtime_id": downtime["id"],
             "root_cause": ai_result.get("root_cause"),
@@ -173,7 +170,6 @@ async def operator_log(
             "confidence_score": ai_result.get("confidence_score"),
         }).execute()
 
-        # Update downtime with severity & root cause
         supabase.table("downtime_logs").update({
             "severity": ai_result.get("severity"),
             "root_cause": ai_result.get("root_cause"),
@@ -185,9 +181,9 @@ async def operator_log(
     except Exception as e:
         print("AI analysis failed:", e)
 
-    # ---------------------------------------------------------
-    #  REALTIME BROADCAST TO MANAGERS
-    # ---------------------------------------------------------
+    # --------------------------------------------------------------
+    # WebSocket broadcast (your previous logic)
+    # --------------------------------------------------------------
     try:
         await ws_manager.broadcast_managers({
             "type": "new_downtime",
@@ -201,9 +197,6 @@ async def operator_log(
             "operator_email": downtime["operator_email"],
         })
     except Exception as e:
-        print("WS broadcast failed", e)
+        print("WS broadcast error:", e)
 
-    return JSONResponse({
-        "message": "Downtime logged",
-        "data": downtime
-    })
+    return JSONResponse({"message": "Downtime logged", "data": downtime})

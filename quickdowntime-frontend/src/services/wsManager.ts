@@ -1,51 +1,52 @@
 // src/services/wsManager.ts
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
+import { wsClient } from "./wsClient";
 import { useAlertStore } from "../store/alertStore";
+import { useAuth } from "../store/authStore";
 
 export function useManagerWS() {
-  const addAlert = useAlertStore((s) => s.addAlert);
-  const wsRef = useRef<WebSocket | null>(null);
+  const { addAlert, increment } = useAlertStore();
+  const { token, user } = useAuth.getState(); // synchronous snapshot
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-
-    function connect() {
-      const ws = new WebSocket(
-        `ws://localhost:8000/api/ws/manager?token=${token}`
-      );
-      wsRef.current = ws;
-
-      ws.onopen = () => {
-        console.log("WS Connected: manager");
-      };
-
-      ws.onclose = () => {
-        console.log("WS Closed → Reconnecting in 5s...");
-        setTimeout(connect, 5000); // reconnect WITHOUT calling hook
-      };
-
-      ws.onerror = (err) => {
-        console.error("WS Error:", err);
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const msg = JSON.parse(event.data);
-
-          if (msg.type === "downtime_created") {
-            addAlert(msg.data); // Send alert to store
+    // attach handlers
+    wsClient.onMessage = (msg) => {
+      const payload = msg.downtime ?? msg.data ?? msg;
+      switch (msg.type) {
+        case "new_downtime":
+        case "new_downtime_with_ai":
+        case "downtime_created":
+          if (payload) {
+            addAlert(payload);
+            increment();
           }
-        } catch (e) {
-          console.error("WS message parse error", e);
-        }
-      };
+          break;
+        default:
+          break;
+      }
+    };
+
+    wsClient.onOpen = () => console.log("Manager WS opened (hook)");
+    wsClient.onClose = (c) => console.log("Manager WS closed (hook)", c);
+    wsClient.onError = (err) => console.log("Manager WS error (hook)", err);
+
+    // Connect only if current user role is manager and token exists.
+    if (user?.role === "manager" && (token || localStorage.getItem("token"))) {
+      const t = token ?? localStorage.getItem("token")!;
+      wsClient.connect(t);
+    } else {
+      // Ensure no connection for non-managers
+      // do NOT forcibly disconnect here if you want persistent globally; but to be safe:
+      // wsClient.disconnect(); // optional: uncomment if you want to close when not manager
     }
 
-    connect();
-
+    // on unmount: remove handlers (avoid leaks)
     return () => {
-      wsRef.current?.close();
+      wsClient.onMessage = null;
+      wsClient.onOpen = null;
+      wsClient.onClose = null;
+      wsClient.onError = null;
+      // don't disconnect here — keep client persistent across route changes
     };
-  }, []);
+  }, []); // only attach once
 }
