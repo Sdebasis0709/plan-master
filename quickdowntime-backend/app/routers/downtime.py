@@ -169,3 +169,27 @@ def sync_queued_records():
             errors.append({"file": fpath, "error": str(e)})
 
     return {"synced": synced, "errors": errors}
+
+
+
+from app.auth.security import get_current_user, require_manager
+
+@router.get("/logs/all")
+def get_all_downtime_logs(user=Depends(get_current_user)):
+    """
+    Fetch ALL downtime logs for frontend filtering
+    Returns complete dataset to minimize API calls
+    """
+    require_manager(user)
+    
+    try:
+        result = (
+            supabase.table("downtime_logs")
+            .select("*")
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return result.data or []
+    except Exception as e:
+        print(f"Error fetching all downtime logs: {e}")
+        return []

@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from app.auth.security import get_current_user, require_manager
 from app.config import supabase
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
@@ -16,25 +16,51 @@ def get_kpis(user=Depends(get_current_user)):
     require_manager(user)
 
     try:
-        today = supabase.table("downtime_logs").select("*").execute()
-
-        total = len(today.data)
-        critical = sum(1 for d in today.data if d.get("severity") == "high")
-        ai_issues = sum(1 for d in today.data if d.get("root_cause"))
-        unseen = sum(1 for d in today.data if not d.get("seen", False))
+        # Get today's date range
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start_iso = today_start.isoformat()
+        
+        # Fetch all downtime logs
+        all_logs = supabase.table("downtime_logs").select("*").execute()
+        
+        # Filter for today's logs
+        today_logs = [
+            log for log in all_logs.data 
+            if log.get("created_at") and log["created_at"] >= today_start_iso
+        ]
+        
+        # Calculate KPIs
+        total_today = len(today_logs)
+        
+        # Resolved today: logs with resolved_at timestamp from today
+        resolved_today = sum(
+            1 for log in today_logs 
+            if log.get("resolved_at") is not None
+        )
+        
+        # High priority breakdown: logs with severity = "high"
+        high_priority = sum(
+            1 for log in today_logs 
+            if log.get("severity") == "high"
+        )
+        
+        # Unseen alerts (for badge)
+        unseen = sum(1 for log in all_logs.data if not log.get("seen", False))
 
         return {
-            "today_downtimes": total,
-            "critical_machines": critical,
-            "ai_issues": ai_issues,
+            "today_downtimes": total_today,
+            "resolved_today": resolved_today,
+            "high_priority": high_priority,
             "unseen_alerts": unseen,
         }
     except Exception as e:
         print(f"Error fetching KPIs: {e}")
+        import traceback
+        traceback.print_exc()
         return {
             "today_downtimes": 0,
-            "critical_machines": 0,
-            "ai_issues": 0,
+            "resolved_today": 0,
+            "high_priority": 0,
             "unseen_alerts": 0,
         }
 
@@ -101,6 +127,14 @@ def mark_alerts_seen(user=Depends(get_current_user)):
     require_manager(user)
     
     try:
+        # Get user ID safely - handle different user object structures
+        user_id = None
+        if isinstance(user, dict):
+            user_id = user.get("sub") or user.get("id") or user.get("user_id") or user.get("email")
+        else:
+            # If user is an object, try to get attributes
+            user_id = getattr(user, "sub", None) or getattr(user, "id", None) or getattr(user, "email", None)
+        
         # Get all unseen alert IDs
         unseen = (
             supabase.table("downtime_logs")
@@ -114,17 +148,21 @@ def mark_alerts_seen(user=Depends(get_current_user)):
         
         alert_ids = [row["id"] for row in unseen.data]
         
-        # Mark all as seen in one update
-        # Note: Supabase doesn't support bulk updates easily, so we do it in batches
+        # Mark all as seen - update fields
         marked_count = 0
         
         for alert_id in alert_ids:
             try:
-                supabase.table("downtime_logs").update({
+                update_data = {
                     "seen": True,
-                    "seen_at": datetime.utcnow().isoformat(),
-                    "seen_by": user["sub"]
-                }).eq("id", alert_id).execute()
+                    "seen_at": datetime.utcnow().isoformat()
+                }
+                
+                # Only add seen_by if we have a valid user_id
+                if user_id:
+                    update_data["seen_by"] = str(user_id)
+                
+                supabase.table("downtime_logs").update(update_data).eq("id", alert_id).execute()
                 marked_count += 1
             except Exception as update_error:
                 print(f"Error marking alert {alert_id}: {update_error}")
@@ -147,11 +185,23 @@ def mark_single_alert_seen(alert_id: int, user=Depends(get_current_user)):
     require_manager(user)
     
     try:
-        result = supabase.table("downtime_logs").update({
+        # Get user ID safely
+        user_id = None
+        if isinstance(user, dict):
+            user_id = user.get("sub") or user.get("id") or user.get("user_id") or user.get("email")
+        else:
+            user_id = getattr(user, "sub", None) or getattr(user, "id", None) or getattr(user, "email", None)
+        
+        update_data = {
             "seen": True,
-            "seen_at": datetime.utcnow().isoformat(),
-            "seen_by": user["sub"]
-        }).eq("id", alert_id).execute()
+            "seen_at": datetime.utcnow().isoformat()
+        }
+        
+        # Only add seen_by if we have a valid user_id
+        if user_id:
+            update_data["seen_by"] = str(user_id)
+        
+        result = supabase.table("downtime_logs").update(update_data).eq("id", alert_id).execute()
         
         if not result.data:
             raise HTTPException(status_code=404, detail="Alert not found")
@@ -168,7 +218,10 @@ def mark_single_alert_seen(alert_id: int, user=Depends(get_current_user)):
 # -------------------------------
 @router.get("/test")
 def test_dashboard(user=Depends(get_current_user)):
+    # This will help you see what's in the user object
     return {
         "message": "Access granted",
-        "user": user
+        "user": user,
+        "user_type": type(user).__name__,
+        "user_keys": list(user.keys()) if isinstance(user, dict) else dir(user)
     }

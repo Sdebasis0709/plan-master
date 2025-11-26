@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import client from "../../api/axiosClient";
 import ManagerLayout from "../../components/layout/ManagerLayout";
 import { useAlertStore } from "../../store/alertStore";
-import { Activity, AlertTriangle } from "lucide-react";
+import { Activity, AlertTriangle, CheckCircle, AlertOctagon } from "lucide-react";
 
 export default function ManagerDashboard() {
   const [stats, setStats] = useState<any>(null);
@@ -26,15 +26,18 @@ export default function ManagerDashboard() {
   const load = async () => {
     try {
       const [s, a, m] = await Promise.all([
-        client.get("/api/management/kpis"),
-        client.get("/api/management/alerts"),
+        client.get("/dashboard/kpis"), // ✅ Changed to /dashboard/kpis
+        client.get("/dashboard/alerts?limit=5"), // ✅ Changed to /dashboard/alerts
         client.get("/api/management/machines/status"),
       ]);
 
       setStats(s.data);
       setAlerts(a.data);
       setMachines(m.data);
-      setAlertCount(a.data.length);
+      
+      // ✅ Count only UNSEEN alerts
+      const unseenCount = a.data.filter((alert: any) => !alert.seen).length;
+      setAlertCount(unseenCount);
     } catch (err) {
       console.log("Dashboard load error:", err);
     }
@@ -83,23 +86,26 @@ export default function ManagerDashboard() {
             label="Total Downtimes Today"
             value={stats?.today_downtimes}
             color="from-blue-500 to-blue-400"
+            icon={<Activity size={28} className="text-blue-400" />}
           />
 
           <KpiCard
-            label="Critical Machines"
-            value={stats?.critical}
+            label="Resolved Today"
+            value={stats?.resolved_today}
+            color="from-green-500 to-green-400"
+            icon={<CheckCircle size={28} className="text-green-400" />}
+          />
+
+          <KpiCard
+            label="High Priority Breakdown"
+            value={stats?.high_priority}
             color="from-red-500 to-red-400"
-          />
-
-          <KpiCard
-            label="AI-Detected Issues"
-            value={stats?.ai_issues}
-            color="from-amber-500 to-amber-400"
+            icon={<AlertOctagon size={28} className="text-red-400" />}
           />
         </div>
       )}
 
-      {/* MACHINE MONITORING SECTION - NEW */}
+      {/* MACHINE MONITORING SECTION */}
       {!loading && (
         <div className="mt-10">
           <div className="flex items-center justify-between mb-4">
@@ -182,10 +188,12 @@ function KpiCard({
   label,
   value,
   color,
+  icon,
 }: {
   label: string;
   value: number | undefined;
   color: string;
+  icon?: React.ReactNode;
 }) {
   return (
     <div
@@ -194,11 +202,14 @@ function KpiCard({
       <div
         className={`absolute inset-0 bg-gradient-to-br ${color} opacity-10`}
       />
-      <div className="relative">
-        <div className="text-sm text-gray-300">{label}</div>
-        <div className="text-4xl font-bold text-blue-400 mt-1">
-          {value ?? 0}
+      <div className="relative flex items-start justify-between">
+        <div>
+          <div className="text-sm text-gray-300 mb-2">{label}</div>
+          <div className="text-4xl font-bold text-white mt-1">
+            {value ?? 0}
+          </div>
         </div>
+        {icon && <div className="opacity-80">{icon}</div>}
       </div>
     </div>
   );

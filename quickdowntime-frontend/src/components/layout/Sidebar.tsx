@@ -66,9 +66,10 @@ export default function Sidebar({ open, onClose }: Props) {
 
           {/* Nav */}
           <nav className="px-2 py-4 space-y-1 overflow-y-auto">
+            <NavItem href="/manager/alerts">Alerts</NavItem>
             <NavItem href="/manager">Dashboard</NavItem>
             <NavItem href="/manager/machines">Machines</NavItem>
-            <NavItem href="/manager/alerts">Alerts</NavItem>
+            
             <NavItem href="/manager/records">Records</NavItem>
             <NavItem href="/manager/reports">Reports</NavItem>
             <NavItem href="/manager/settings">Settings</NavItem>

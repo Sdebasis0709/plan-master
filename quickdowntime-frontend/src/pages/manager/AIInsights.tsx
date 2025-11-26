@@ -6,6 +6,7 @@ export default function AIInsights() {
   const [daily, setDaily] = useState<any>(null);
   const [weekly, setWeekly] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'daily' | 'weekly'>('daily');
 
   useEffect(() => {
     load();
@@ -43,6 +44,8 @@ export default function AIInsights() {
     );
   }
 
+  const currentData = activeTab === 'daily' ? daily : weekly;
+
   return (
     <ManagerLayout>
       <div className="max-w-7xl mx-auto">
@@ -57,43 +60,56 @@ export default function AIInsights() {
           <p className="text-gray-400 mt-2">AI-powered analysis of downtime patterns and recommendations</p>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        {/* Tab Buttons */}
+        <div className="flex gap-4 mb-8">
+          <button
+            onClick={() => setActiveTab('daily')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${
+              activeTab === 'daily'
+                ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
+                : 'bg-[#0f1724] text-gray-400 hover:bg-[#1a2332] hover:text-gray-300'
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Daily Analysis
+          </button>
+          <button
+            onClick={() => setActiveTab('weekly')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${
+              activeTab === 'weekly'
+                ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
+                : 'bg-[#0f1724] text-gray-400 hover:bg-[#1a2332] hover:text-gray-300'
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            Weekly Trends
+          </button>
+        </div>
+
+        {/* Summary Card */}
+        <div className="mb-8">
           <StatCard 
-            title="Today's Incidents" 
-            value={daily?.total_incidents || 0}
-            color="blue"
+            title={activeTab === 'daily' ? "Today's Incidents" : "Weekly Incidents"}
+            value={currentData?.total_incidents || 0}
+            color={activeTab === 'daily' ? 'blue' : 'purple'}
             icon={
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            }
-          />
-          <StatCard 
-            title="Weekly Incidents" 
-            value={weekly?.total_incidents || 0}
-            color="purple"
-            icon={
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             }
           />
         </div>
 
-        {/* Analysis Sections */}
+        {/* Analysis Section */}
         <Section 
-          title="Today's Analysis" 
-          data={daily} 
-          icon="📊"
-          color="blue"
-        />
-        
-        <Section 
-          title="Weekly Trends & Patterns" 
-          data={weekly} 
-          icon="📈"
-          color="purple"
+          title={activeTab === 'daily' ? "Today's Analysis" : "Weekly Trends & Patterns"}
+          data={currentData} 
+          icon={activeTab === 'daily' ? "📊" : "📈"}
+          color={activeTab === 'daily' ? 'blue' : 'purple'}
         />
       </div>
     </ManagerLayout>
