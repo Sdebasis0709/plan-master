@@ -1,63 +1,6 @@
 import { useEffect, useState } from "react";
 import { CheckCircle, Clock, AlertCircle } from "lucide-react";
-
-// Mock client for demonstration
-const client = {
-  get: async (url: string) => {
-    // Simulating resolved downtime history
-    return {
-      data: {
-        resolved: [
-          {
-            id: 15,
-            machine_id: "Hot Strip Mill",
-            reason: "Hydraulic Failure",
-            category: "Mechanical",
-            description: "Main hydraulic pump failed during operation",
-            severity: "critical",
-            status: "resolved",
-            created_at: "2025-11-25T14:30:00",
-            resolved_at: "2025-11-25T16:45:00",
-            duration_seconds: 8100,
-            resolved_by: "John Doe",
-            resolution_notes: "Replaced hydraulic pump and tested system",
-            root_cause: "Pump seal degradation due to high temperature operation"
-          },
-          {
-            id: 14,
-            machine_id: "Cold Rolling Mill",
-            reason: "Sensor Malfunction",
-            category: "Electrical",
-            description: "Temperature sensor reading incorrect values",
-            severity: "high",
-            status: "resolved",
-            created_at: "2025-11-25T10:15:00",
-            resolved_at: "2025-11-25T11:30:00",
-            duration_seconds: 4500,
-            resolved_by: "Jane Smith",
-            resolution_notes: "Recalibrated and replaced faulty sensor",
-            root_cause: "Sensor calibration drift"
-          },
-          {
-            id: 13,
-            machine_id: "Blast Furnace",
-            reason: "Material Jam",
-            category: "Operational",
-            description: "Material blockage in feed system",
-            severity: "high",
-            status: "resolved",
-            created_at: "2025-11-24T16:00:00",
-            resolved_at: "2025-11-24T17:15:00",
-            duration_seconds: 4500,
-            resolved_by: "Mike Johnson",
-            resolution_notes: "Cleared blockage and inspected feed mechanism",
-            root_cause: "Impure incoming material caused accumulation"
-          }
-        ]
-      }
-    };
-  }
-};
+import client from "../../api/axiosClient";
 
 export default function OperatorHistory() {
   const [items, setItems] = useState<any[]>([]);
@@ -66,6 +9,8 @@ export default function OperatorHistory() {
 
   useEffect(() => {
     load();
+    const interval = setInterval(load, 30000); // Refresh every 30 seconds
+    return () => clearInterval(interval);
   }, []);
 
   const load = async () => {
@@ -224,7 +169,7 @@ export default function OperatorHistory() {
                           : "bg-yellow-600"
                       }`}
                     >
-                      {item.severity?.toUpperCase()}
+                      {item.severity?.toUpperCase() || "MEDIUM"}
                     </span>
                     <span className="px-3 py-1 text-xs bg-green-600 rounded-full font-semibold flex items-center gap-1">
                       <CheckCircle className="w-3 h-3" />
@@ -293,6 +238,38 @@ export default function OperatorHistory() {
                   <div className="bg-[#0a1322] border border-gray-700 rounded-lg p-4">
                     <p className="text-xs text-gray-500 uppercase mb-2">Root Cause Analysis</p>
                     <p className="text-gray-300 text-sm">{item.root_cause}</p>
+                  </div>
+                )}
+
+                {/* IMAGE */}
+                {item.image_path && (
+                  <div className="mt-4">
+                    <p className="text-xs text-gray-500 uppercase mb-2">Photo Evidence</p>
+                    <img
+                      src={
+                        item.image_path.startsWith("/uploads")
+                          ? item.image_path
+                          : `${import.meta.env.VITE_API_URL || ""}${item.image_path}`
+                      }
+                      alt="Evidence"
+                      className="w-full max-w-md rounded-lg border border-gray-700"
+                    />
+                  </div>
+                )}
+
+                {/* AUDIO */}
+                {item.audio_path && (
+                  <div className="mt-4">
+                    <p className="text-xs text-gray-500 uppercase mb-2">Voice Note</p>
+                    <audio
+                      controls
+                      src={
+                        item.audio_path.startsWith("/uploads")
+                          ? item.audio_path
+                          : `${import.meta.env.VITE_API_URL || ""}${item.audio_path}`
+                      }
+                      className="w-full"
+                    />
                   </div>
                 )}
               </div>
